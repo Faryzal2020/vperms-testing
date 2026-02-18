@@ -9,6 +9,7 @@ export default defineConfig(({ mode }) => {
     return {
         plugins: [react()],
         server: {
+            host: true,
             port: parseInt(process.env.PORT) || 6173,
             // No proxy needed - we make direct API calls to the backend
             // Configure VITE_BACKEND_URL in .env or .env.local
