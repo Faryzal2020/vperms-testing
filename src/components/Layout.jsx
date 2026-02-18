@@ -85,6 +85,12 @@ export default function Layout() {
                             ⚙️ System
                         </NavLink>
                     )}
+
+                    {hasPermission('devices:write') && (
+                        <NavLink to="/can-configs" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                            🔧 CAN Configs
+                        </NavLink>
+                    )}
                 </nav>
 
                 <div className="sidebar-user">

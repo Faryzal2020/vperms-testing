@@ -11,6 +11,7 @@ import Users from './pages/Users';
 import Companies from './pages/Companies';
 import Owners from './pages/Owners';
 import SimCards from './pages/SimCards';
+import CanConfig from './pages/CanConfig';
 import Layout from './components/Layout';
 import { AuthContext } from './context/AuthContext';
 import { API_BASE, BACKEND_URL } from './config';
@@ -105,6 +106,7 @@ function App() {
                         <Route path="companies" element={<Companies />} />
                         <Route path="owners" element={<Owners />} />
                         <Route path="simcards" element={<SimCards />} />
+                        <Route path="can-configs" element={<CanConfig />} />
                     </Route>
                 </Routes>
             </BrowserRouter>
