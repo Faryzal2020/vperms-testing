@@ -3,11 +3,142 @@ import { useApi } from '../hooks/useApi';
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 
+// ─── Vehicle Models Panel (right sidebar) ────────────────────────────────
+function VehicleModelsPanel({ api, vehicleModels, setVehicleModels, onModelsChanged }) {
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [editingId, setEditingId] = useState(null);
+    const [formData, setFormData] = useState({ name: '', description: '' });
+    const [showForm, setShowForm] = useState(false);
+
+    useEffect(() => {
+        loadModels();
+    }, []);
+
+    const loadModels = async () => {
+        setLoading(true);
+        try {
+            const data = await api.get('/vehicle-models');
+            setVehicleModels(data.data || []);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        try {
+            const payload = { name: formData.name, description: formData.description || null };
+            if (editingId) {
+                await api.put(`/vehicle-models/${editingId}`, payload);
+            } else {
+                await api.post('/vehicle-models', payload);
+            }
+            resetForm();
+            loadModels();
+            if (onModelsChanged) onModelsChanged();
+        } catch (err) {
+            setError(err.message);
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!confirm('Delete this vehicle model?')) return;
+        try {
+            await api.delete(`/vehicle-models/${id}`);
+            loadModels();
+            if (onModelsChanged) onModelsChanged();
+        } catch (err) {
+            setError(err.message);
+        }
+    };
+
+    const startEdit = (model) => {
+        setEditingId(model.id);
+        setFormData({ name: model.name, description: model.description || '' });
+        setShowForm(true);
+    };
+
+    const resetForm = () => {
+        setEditingId(null);
+        setFormData({ name: '', description: '' });
+        setShowForm(false);
+    };
+
+    return (
+        <div className="models-panel">
+            <div className="models-panel-header">
+                <h3 className="models-panel-title">Vehicle Models</h3>
+                <button
+                    className="btn btn-sm btn-primary"
+                    onClick={() => { resetForm(); setShowForm(true); }}
+                    title="Add Model"
+                >+</button>
+            </div>
+
+            {error && <div className="message message-error" style={{ margin: '0.5rem 0', fontSize: '0.8rem', padding: '0.5rem' }}>{error}</div>}
+
+            {showForm && (
+                <form onSubmit={handleSubmit} className="models-form">
+                    <input
+                        type="text"
+                        className="form-input form-input-sm"
+                        placeholder="Model name *"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        required
+                        autoFocus
+                    />
+                    <input
+                        type="text"
+                        className="form-input form-input-sm"
+                        placeholder="Description"
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    />
+                    <div className="models-form-actions">
+                        <button type="submit" className="btn btn-sm btn-primary">
+                            {editingId ? 'Update' : 'Add'}
+                        </button>
+                        <button type="button" className="btn btn-sm" onClick={resetForm}>Cancel</button>
+                    </div>
+                </form>
+            )}
+
+            <div className="models-list">
+                {loading ? (
+                    <div className="loading" style={{ padding: '1rem' }}><div className="spinner" style={{ width: 20, height: 20 }}></div></div>
+                ) : vehicleModels.length === 0 ? (
+                    <div className="empty-state" style={{ padding: '1rem', fontSize: '0.85rem' }}>No models yet</div>
+                ) : (
+                    vehicleModels.map(model => (
+                        <div key={model.id} className="model-item">
+                            <div className="model-item-info">
+                                <span className="model-item-name">{model.name}</span>
+                                {model.description && <span className="model-item-desc">{model.description}</span>}
+                            </div>
+                            <div className="model-item-actions">
+                                <button className="btn-icon" onClick={() => startEdit(model)} title="Edit">✎</button>
+                                <button className="btn-icon btn-icon-danger" onClick={() => handleDelete(model.id)} title="Delete">✕</button>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ─── Main Vehicles Page ──────────────────────────────────────────────────
 export default function Vehicles() {
     const api = useApi();
     const { user } = useAuth();
     const { hasPermission } = usePermissions();
     const [vehicles, setVehicles] = useState([]);
+    const [vehicleModels, setVehicleModels] = useState([]);
     const [owners, setOwners] = useState([]);
     const [companies, setCompanies] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -18,7 +149,7 @@ export default function Vehicles() {
         plateNumber: '',
         vehicleType: '',
         brand: '',
-        model: '',
+        vehicleModelId: '',
         year: '',
         color: '',
         ownerId: '',
@@ -30,16 +161,14 @@ export default function Vehicles() {
     useEffect(() => {
         loadVehicles();
 
-        // Only load owners if user has permission
         if (hasPermission('owners:read') || hasPermission('owners:list')) {
             loadOwners();
         }
 
-        // Only load companies if user has permission and no company assigned
         if (user && !user.companyId && (hasPermission('companies:read') || hasPermission('companies:list'))) {
             loadCompanies();
         }
-    }, [pagination.page, user]); // Removed hasPermission to prevent infinite loop
+    }, [pagination.page, user]);
 
     const loadVehicles = async () => {
         setLoading(true);
@@ -56,7 +185,7 @@ export default function Vehicles() {
 
     const loadOwners = async () => {
         try {
-            const data = await api.get('/owners?limit=1000'); // Get all owners for dropdown
+            const data = await api.get('/owners?limit=1000');
             setOwners(data.data || []);
         } catch (err) {
             console.error('Failed to load owners:', err);
@@ -76,16 +205,15 @@ export default function Vehicles() {
         e.preventDefault();
         setError('');
         try {
-            // Prepare payload with proper type conversions
             const payload = {
                 plateNumber: formData.plateNumber,
                 vehicleType: formData.vehicleType || null,
                 brand: formData.brand || null,
-                model: formData.model || null,
-                year: formData.year ? parseInt(formData.year, 10) : null, // Convert to integer or null
+                vehicleModelId: formData.vehicleModelId || null,
+                year: formData.year ? parseInt(formData.year, 10) : null,
                 color: formData.color || null,
-                ownerId: formData.ownerId || null, // Convert empty string to null
-                companyId: formData.companyId || null, // Convert empty string to null
+                ownerId: formData.ownerId || null,
+                companyId: formData.companyId || null,
                 status: formData.status,
             };
 
@@ -119,7 +247,7 @@ export default function Vehicles() {
             plateNumber: vehicle.plateNumber || '',
             vehicleType: vehicle.vehicleType || '',
             brand: vehicle.brand || '',
-            model: vehicle.model || '',
+            vehicleModelId: vehicle.vehicleModelId || vehicle.vehicleModel?.id || '',
             year: vehicle.year || '',
             color: vehicle.color || '',
             ownerId: vehicle.ownerId || '',
@@ -134,7 +262,7 @@ export default function Vehicles() {
             plateNumber: '',
             vehicleType: '',
             brand: '',
-            model: '',
+            vehicleModelId: '',
             year: '',
             color: '',
             ownerId: '',
@@ -143,98 +271,115 @@ export default function Vehicles() {
         });
     };
 
+    const getModelName = (vehicle) => {
+        if (vehicle.vehicleModel?.name) return vehicle.vehicleModel.name;
+        return '-';
+    };
+
     return (
-        <div>
-            <div className="page-header">
-                <div>
-                    <h1 className="page-title">Vehicles</h1>
-                    <p className="page-subtitle">{pagination.total} vehicles registered</p>
+        <div className="vehicles-layout">
+            {/* ── Left: Vehicles List ── */}
+            <div className="vehicles-main">
+                <div className="page-header">
+                    <div>
+                        <h1 className="page-title">Vehicles</h1>
+                        <p className="page-subtitle">{pagination.total} vehicles registered</p>
+                    </div>
+                    {hasPermission('vehicles:create') && (
+                        <button className="btn btn-primary" onClick={() => { resetForm(); setEditingVehicle(null); setShowModal(true); }}>
+                            + Add Vehicle
+                        </button>
+                    )}
                 </div>
-                {hasPermission('vehicles:create') && (
-                    <button className="btn btn-primary" onClick={() => { resetForm(); setEditingVehicle(null); setShowModal(true); }}>
-                        + Add Vehicle
-                    </button>
+
+                {error && <div className="message message-error">{error}</div>}
+
+                {loading ? (
+                    <div className="loading"><div className="spinner"></div></div>
+                ) : (
+                    <>
+                        <div className="table-container" style={{ overflow: 'auto', flex: 1 }}>
+                            <table className="table">
+                                <thead>
+                                    <tr>
+                                        <th>Plate Number</th>
+                                        <th>Type</th>
+                                        <th>Brand / Model</th>
+                                        <th>Owner</th>
+                                        <th>Device</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {vehicles.map(vehicle => (
+                                        <tr key={vehicle.id}>
+                                            <td><strong>{vehicle.plateNumber}</strong></td>
+                                            <td>{vehicle.vehicleType || '-'}</td>
+                                            <td>{vehicle.brand} {getModelName(vehicle)}</td>
+                                            <td>
+                                                {vehicle.owner ? (
+                                                    <span style={{ fontWeight: 500 }}>{vehicle.owner.fullName}</span>
+                                                ) : (
+                                                    <span style={{ color: 'var(--text-muted)' }}>-</span>
+                                                )}
+                                            </td>
+                                            <td>
+                                                {vehicle.device ? (
+                                                    <span className="badge badge-success">{vehicle.device.imei}</span>
+                                                ) : (
+                                                    <span className="badge badge-warning">No device</span>
+                                                )}
+                                            </td>
+                                            <td>
+                                                <span className={`badge ${vehicle.status === 'active' ? 'badge-success' : 'badge-warning'}`}>
+                                                    {vehicle.status}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {(hasPermission('vehicles:update') || hasPermission('vehicles:delete')) && (
+                                                    <>
+                                                        {hasPermission('vehicles:update') && (
+                                                            <button className="btn btn-sm" onClick={() => openEditModal(vehicle)}>Edit</button>
+                                                        )}
+                                                        {hasPermission('vehicles:delete') && (
+                                                            <button className="btn btn-sm btn-danger" style={{ marginLeft: '0.5rem' }} onClick={() => handleDelete(vehicle.id)}>Delete</button>
+                                                        )}
+                                                    </>
+                                                )}
+                                                {!hasPermission('vehicles:update') && !hasPermission('vehicles:delete') && (
+                                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No actions</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {vehicles.length === 0 && (
+                                        <tr><td colSpan="7" className="empty-state">No vehicles found</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {pagination.total > pagination.limit && (
+                            <div className="pagination">
+                                <button className="btn btn-sm" disabled={pagination.page <= 1} onClick={() => setPagination(p => ({ ...p, page: p.page - 1 }))}>Previous</button>
+                                <span style={{ margin: '0 1rem' }}>Page {pagination.page} of {Math.ceil(pagination.total / pagination.limit)}</span>
+                                <button className="btn btn-sm" disabled={pagination.page >= Math.ceil(pagination.total / pagination.limit)} onClick={() => setPagination(p => ({ ...p, page: p.page + 1 }))}>Next</button>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
 
-            {error && <div className="message message-error">{error}</div>}
+            {/* ── Right: Vehicle Models Panel ── */}
+            <VehicleModelsPanel
+                api={api}
+                vehicleModels={vehicleModels}
+                setVehicleModels={setVehicleModels}
+                onModelsChanged={loadVehicles}
+            />
 
-            {loading ? (
-                <div className="loading"><div className="spinner"></div></div>
-            ) : (
-                <>
-                    <div className="table-container">
-                        <table className="table">
-                            <thead>
-                                <tr>
-                                    <th>Plate Number</th>
-                                    <th>Type</th>
-                                    <th>Brand/Model</th>
-                                    <th>Owner</th>
-                                    <th>Device</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {vehicles.map(vehicle => (
-                                    <tr key={vehicle.id}>
-                                        <td><strong>{vehicle.plateNumber}</strong></td>
-                                        <td>{vehicle.vehicleType || '-'}</td>
-                                        <td>{vehicle.brand} {vehicle.model}</td>
-                                        <td>
-                                            {vehicle.owner ? (
-                                                <span style={{ fontWeight: 500 }}>{vehicle.owner.fullName}</span>
-                                            ) : (
-                                                <span style={{ color: 'var(--text-muted)' }}>-</span>
-                                            )}
-                                        </td>
-                                        <td>
-                                            {vehicle.device ? (
-                                                <span className="badge badge-success">{vehicle.device.imei}</span>
-                                            ) : (
-                                                <span className="badge badge-warning">No device</span>
-                                            )}
-                                        </td>
-                                        <td>
-                                            <span className={`badge ${vehicle.status === 'active' ? 'badge-success' : 'badge-warning'}`}>
-                                                {vehicle.status}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            {(hasPermission('vehicles:update') || hasPermission('vehicles:delete')) && (
-                                                <>
-                                                    {hasPermission('vehicles:update') && (
-                                                        <button className="btn btn-sm" onClick={() => openEditModal(vehicle)}>Edit</button>
-                                                    )}
-                                                    {hasPermission('vehicles:delete') && (
-                                                        <button className="btn btn-sm btn-danger" style={{ marginLeft: '0.5rem' }} onClick={() => handleDelete(vehicle.id)}>Delete</button>
-                                                    )}
-                                                </>
-                                            )}
-                                            {!hasPermission('vehicles:update') && !hasPermission('vehicles:delete') && (
-                                                <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No actions</span>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
-                                {vehicles.length === 0 && (
-                                    <tr><td colSpan="7" className="empty-state">No vehicles found</td></tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {pagination.total > pagination.limit && (
-                        <div className="pagination">
-                            <button className="btn btn-sm" disabled={pagination.page <= 1} onClick={() => setPagination(p => ({ ...p, page: p.page - 1 }))}>Previous</button>
-                            <span style={{ margin: '0 1rem' }}>Page {pagination.page} of {Math.ceil(pagination.total / pagination.limit)}</span>
-                            <button className="btn btn-sm" disabled={pagination.page >= Math.ceil(pagination.total / pagination.limit)} onClick={() => setPagination(p => ({ ...p, page: p.page + 1 }))}>Next</button>
-                        </div>
-                    )}
-                </>
-            )}
-
+            {/* ── Vehicle Create/Edit Modal ── */}
             {showModal && (
                 <div className="modal-overlay" onClick={() => setShowModal(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
@@ -293,7 +438,16 @@ export default function Vehicles() {
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">Model</label>
-                                        <input type="text" className="form-input" value={formData.model} onChange={(e) => setFormData({ ...formData, model: e.target.value })} />
+                                        <select
+                                            className="form-input"
+                                            value={formData.vehicleModelId}
+                                            onChange={(e) => setFormData({ ...formData, vehicleModelId: e.target.value })}
+                                        >
+                                            <option value="">-- No Model --</option>
+                                            {vehicleModels.map(m => (
+                                                <option key={m.id} value={m.id}>{m.name}</option>
+                                            ))}
+                                        </select>
                                     </div>
                                 </div>
                                 <div className="form-group">
