@@ -817,3 +817,8 @@ input[type="checkbox"] {
         max-height: 300px;
     }
 }
+
+/* Selected row in assign mode */
+.table tr.row-selected td {
+    background: rgba(99, 102, 241, 0.12);
+}

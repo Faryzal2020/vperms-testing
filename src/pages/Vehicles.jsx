@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 
 // ─── Vehicle Models Panel (right sidebar) ────────────────────────────────
-function VehicleModelsPanel({ api, vehicleModels, setVehicleModels, onModelsChanged }) {
+function VehicleModelsPanel({ api, vehicleModels, setVehicleModels, onModelsChanged, onAssignModel }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [editingId, setEditingId] = useState(null);
@@ -121,6 +121,7 @@ function VehicleModelsPanel({ api, vehicleModels, setVehicleModels, onModelsChan
                                 {model.description && <span className="model-item-desc">{model.description}</span>}
                             </div>
                             <div className="model-item-actions">
+                                <button className="btn-icon" onClick={() => onAssignModel(model)} title="Assign to vehicles">⇄</button>
                                 <button className="btn-icon" onClick={() => startEdit(model)} title="Edit">✎</button>
                                 <button className="btn-icon btn-icon-danger" onClick={() => handleDelete(model.id)} title="Delete">✕</button>
                             </div>
@@ -157,6 +158,12 @@ export default function Vehicles() {
         status: 'active',
     });
     const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 });
+
+    // ── Assign mode state ──
+    const [assignMode, setAssignMode] = useState(false);
+    const [assigningModel, setAssigningModel] = useState(null); // the model being assigned
+    const [selectedVehicleIds, setSelectedVehicleIds] = useState(new Set());
+    const [assignLoading, setAssignLoading] = useState(false);
 
     useEffect(() => {
         loadVehicles();
@@ -276,6 +283,60 @@ export default function Vehicles() {
         return '-';
     };
 
+    // ── Assign mode handlers ──
+    const startAssignMode = (model) => {
+        setAssigningModel(model);
+        setAssignMode(true);
+        setSelectedVehicleIds(new Set());
+    };
+
+    const cancelAssignMode = () => {
+        setAssignMode(false);
+        setAssigningModel(null);
+        setSelectedVehicleIds(new Set());
+    };
+
+    const toggleVehicleSelection = (vehicleId) => {
+        setSelectedVehicleIds(prev => {
+            const next = new Set(prev);
+            if (next.has(vehicleId)) {
+                next.delete(vehicleId);
+            } else {
+                next.add(vehicleId);
+            }
+            return next;
+        });
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedVehicleIds.size === vehicles.length) {
+            setSelectedVehicleIds(new Set());
+        } else {
+            setSelectedVehicleIds(new Set(vehicles.map(v => v.id)));
+        }
+    };
+
+    const confirmAssign = async () => {
+        if (selectedVehicleIds.size === 0) return;
+        setAssignLoading(true);
+        setError('');
+        try {
+            await api.patch('/vehicles/bulk-update', {
+                vehicleIds: [...selectedVehicleIds],
+                data: { vehicleModelId: assigningModel.id },
+            });
+            cancelAssignMode();
+            loadVehicles();
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setAssignLoading(false);
+        }
+    };
+
+    const allSelected = vehicles.length > 0 && selectedVehicleIds.size === vehicles.length;
+    const someSelected = selectedVehicleIds.size > 0 && selectedVehicleIds.size < vehicles.length;
+
     return (
         <div className="vehicles-layout">
             {/* ── Left: Vehicles List ── */}
@@ -283,13 +344,33 @@ export default function Vehicles() {
                 <div className="page-header">
                     <div>
                         <h1 className="page-title">Vehicles</h1>
-                        <p className="page-subtitle">{pagination.total} vehicles registered</p>
+                        <p className="page-subtitle">
+                            {assignMode ? (
+                                <>Assigning model: <strong>{assigningModel?.name}</strong> — {selectedVehicleIds.size} selected</>
+                            ) : (
+                                <>{pagination.total} vehicles registered</>
+                            )}
+                        </p>
                     </div>
-                    {hasPermission('vehicles:create') && (
-                        <button className="btn btn-primary" onClick={() => { resetForm(); setEditingVehicle(null); setShowModal(true); }}>
-                            + Add Vehicle
-                        </button>
-                    )}
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        {assignMode && (
+                            <>
+                                <button
+                                    className="btn btn-sm btn-primary"
+                                    onClick={confirmAssign}
+                                    disabled={selectedVehicleIds.size === 0 || assignLoading}
+                                >
+                                    {assignLoading ? 'Assigning...' : `Confirm (${selectedVehicleIds.size})`}
+                                </button>
+                                <button className="btn btn-sm" onClick={cancelAssignMode}>Cancel</button>
+                            </>
+                        )}
+                        {!assignMode && hasPermission('vehicles:create') && (
+                            <button className="btn btn-primary" onClick={() => { resetForm(); setEditingVehicle(null); setShowModal(true); }}>
+                                + Add Vehicle
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {error && <div className="message message-error">{error}</div>}
@@ -302,18 +383,42 @@ export default function Vehicles() {
                             <table className="table">
                                 <thead>
                                     <tr>
+                                        {assignMode && (
+                                            <th style={{ width: 40, textAlign: 'center' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={allSelected}
+                                                    ref={el => { if (el) el.indeterminate = someSelected; }}
+                                                    onChange={toggleSelectAll}
+                                                />
+                                            </th>
+                                        )}
                                         <th>Plate Number</th>
                                         <th>Type</th>
                                         <th>Brand / Model</th>
                                         <th>Owner</th>
                                         <th>Device</th>
                                         <th>Status</th>
-                                        <th>Actions</th>
+                                        {!assignMode && <th>Actions</th>}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {vehicles.map(vehicle => (
-                                        <tr key={vehicle.id}>
+                                        <tr
+                                            key={vehicle.id}
+                                            className={assignMode && selectedVehicleIds.has(vehicle.id) ? 'row-selected' : ''}
+                                            onClick={assignMode ? () => toggleVehicleSelection(vehicle.id) : undefined}
+                                            style={assignMode ? { cursor: 'pointer' } : undefined}
+                                        >
+                                            {assignMode && (
+                                                <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedVehicleIds.has(vehicle.id)}
+                                                        onChange={() => toggleVehicleSelection(vehicle.id)}
+                                                    />
+                                                </td>
+                                            )}
                                             <td><strong>{vehicle.plateNumber}</strong></td>
                                             <td>{vehicle.vehicleType || '-'}</td>
                                             <td>{vehicle.brand} {getModelName(vehicle)}</td>
@@ -336,25 +441,27 @@ export default function Vehicles() {
                                                     {vehicle.status}
                                                 </span>
                                             </td>
-                                            <td>
-                                                {(hasPermission('vehicles:update') || hasPermission('vehicles:delete')) && (
-                                                    <>
-                                                        {hasPermission('vehicles:update') && (
-                                                            <button className="btn btn-sm" onClick={() => openEditModal(vehicle)}>Edit</button>
-                                                        )}
-                                                        {hasPermission('vehicles:delete') && (
-                                                            <button className="btn btn-sm btn-danger" style={{ marginLeft: '0.5rem' }} onClick={() => handleDelete(vehicle.id)}>Delete</button>
-                                                        )}
-                                                    </>
-                                                )}
-                                                {!hasPermission('vehicles:update') && !hasPermission('vehicles:delete') && (
-                                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No actions</span>
-                                                )}
-                                            </td>
+                                            {!assignMode && (
+                                                <td>
+                                                    {(hasPermission('vehicles:update') || hasPermission('vehicles:delete')) && (
+                                                        <>
+                                                            {hasPermission('vehicles:update') && (
+                                                                <button className="btn btn-sm" onClick={() => openEditModal(vehicle)}>Edit</button>
+                                                            )}
+                                                            {hasPermission('vehicles:delete') && (
+                                                                <button className="btn btn-sm btn-danger" style={{ marginLeft: '0.5rem' }} onClick={() => handleDelete(vehicle.id)}>Delete</button>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                    {!hasPermission('vehicles:update') && !hasPermission('vehicles:delete') && (
+                                                        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No actions</span>
+                                                    )}
+                                                </td>
+                                            )}
                                         </tr>
                                     ))}
                                     {vehicles.length === 0 && (
-                                        <tr><td colSpan="7" className="empty-state">No vehicles found</td></tr>
+                                        <tr><td colSpan={assignMode ? 8 : 7} className="empty-state">No vehicles found</td></tr>
                                     )}
                                 </tbody>
                             </table>
@@ -377,6 +484,7 @@ export default function Vehicles() {
                 vehicleModels={vehicleModels}
                 setVehicleModels={setVehicleModels}
                 onModelsChanged={loadVehicles}
+                onAssignModel={startAssignMode}
             />
 
             {/* ── Vehicle Create/Edit Modal ── */}
