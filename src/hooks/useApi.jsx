@@ -1,10 +1,11 @@
+import { useMemo, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE } from '../config';
 
 export function useApi() {
     const { token, logout } = useAuth();
 
-    const fetchApi = async (endpoint, options = {}) => {
+    const fetchApi = useCallback(async (endpoint, options = {}) => {
         const headers = {
             'Content-Type': 'application/json',
             ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -37,13 +38,14 @@ export function useApi() {
             }
             throw error;
         }
-    };
+    }, [token, logout]);
 
-    return {
+    return useMemo(() => ({
         get: (endpoint) => fetchApi(endpoint),
         post: (endpoint, body) => fetchApi(endpoint, { method: 'POST', body: JSON.stringify(body) }),
         put: (endpoint, body) => fetchApi(endpoint, { method: 'PUT', body: JSON.stringify(body) }),
         patch: (endpoint, body) => fetchApi(endpoint, { method: 'PATCH', body: JSON.stringify(body) }),
         delete: (endpoint) => fetchApi(endpoint, { method: 'DELETE' }),
-    };
+    }), [fetchApi]);
 }
+
