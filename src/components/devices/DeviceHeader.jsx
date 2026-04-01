@@ -9,7 +9,7 @@ export default function DeviceHeader({ device, telemetry }) {
     const [commandError, setCommandError] = useState('');
 
     // Status Logic
-    const isOnline = telemetry?.realTimeStatus?.connection_status === 'online';
+    const isOnline = telemetry?.connection_status === 'online';
     const lastSeen = telemetry?.last_seen
         ? new Date(telemetry.last_seen).toLocaleString()
         : (device?.lastSeen
