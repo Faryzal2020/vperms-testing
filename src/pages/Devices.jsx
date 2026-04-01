@@ -9,6 +9,7 @@ export default function Devices() {
     const { hasPermission } = usePermissions();
     const [devices, setDevices] = useState([]);
     const [simCards, setSimCards] = useState([]);
+    const [vehicles, setVehicles] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [showModal, setShowModal] = useState(false);
@@ -18,6 +19,7 @@ export default function Devices() {
         deviceModel: 'FMC130',
         firmwareVersion: '',
         simCardId: '',
+        vehicleId: '',
         status: 'active',
     });
     const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 });
@@ -28,6 +30,11 @@ export default function Devices() {
         // Only load SIM cards if user has permission
         if (hasPermission('sim_cards:read') || hasPermission('sim_cards:list')) {
             loadSimCards();
+        }
+        
+        // Only load vehicles if user has permission
+        if (hasPermission('vehicles:read') || hasPermission('vehicles:list')) {
+            loadVehicles();
         }
     }, [pagination.page]); // Removed hasPermission to prevent infinite loop
 
@@ -53,6 +60,15 @@ export default function Devices() {
         }
     };
 
+    const loadVehicles = async () => {
+        try {
+            const data = await api.get('/vehicles?limit=1000');
+            setVehicles(data.data || []);
+        } catch (err) {
+            console.error('Failed to load vehicles:', err);
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
@@ -63,6 +79,7 @@ export default function Devices() {
                 deviceModel: formData.deviceModel || null,
                 firmwareVersion: formData.firmwareVersion || null,
                 simCardId: formData.simCardId || null, // Convert empty string to null
+                vehicleId: formData.vehicleId || null, 
                 status: formData.status,
             };
 
@@ -97,13 +114,14 @@ export default function Devices() {
             deviceModel: device.deviceModel || 'FMC130',
             firmwareVersion: device.firmwareVersion || '',
             simCardId: device.simCardId || '',
+            vehicleId: device.vehicle?.id || device.vehicleId || '',
             status: device.status || 'active',
         });
         setShowModal(true);
     };
 
     const resetForm = () => {
-        setFormData({ imei: '', deviceModel: 'FMC130', firmwareVersion: '', simCardId: '', status: 'active' });
+        setFormData({ imei: '', deviceModel: 'FMC130', firmwareVersion: '', simCardId: '', vehicleId: '', status: 'active' });
     };
 
     return (
@@ -243,6 +261,17 @@ export default function Devices() {
                                             <option key={sim.id} value={sim.id}>
                                                 {sim.simNumber} ({sim.provider})
                                                 {sim.device && sim.device.id !== editingDevice?.id ? ` - On ${sim.device.imei}` : ''}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Assigned Vehicle</label>
+                                    <select className="form-input" value={formData.vehicleId} onChange={(e) => setFormData({ ...formData, vehicleId: e.target.value })}>
+                                        <option value="">-- Unassigned --</option>
+                                        {vehicles.map(vehicle => (
+                                            <option key={vehicle.id} value={vehicle.id}>
+                                                {vehicle.plateNumber}
                                             </option>
                                         ))}
                                     </select>
