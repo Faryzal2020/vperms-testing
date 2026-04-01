@@ -56,11 +56,11 @@ export default function TimelineView({ loading, data, error, pagination, onPageC
                             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                                 {new Date(item.timestamp || item.time).toLocaleString()}
                             </span>
-                            <div style={{ background: 'white', padding: '0.75rem', borderRadius: '4px', border: '1px solid var(--border)', marginTop: '0.25rem' }}>
-                                <strong style={{ display: 'block', fontSize: '0.9rem' }}>
+                            <div style={{ background: 'var(--bg-light, rgba(255, 255, 255, 0.05))', padding: '0.75rem', borderRadius: '4px', border: '1px solid var(--border)', marginTop: '0.25rem', color: 'var(--text, inherit)' }}>
+                                <strong style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.25rem' }}>
                                     {item.type} {item.subtype ? `- ${item.subtype}` : ''}
                                 </strong>
-                                <span style={{ fontSize: '0.85rem' }}>
+                                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted, #a0aec0)' }}>
                                     {item.description || item.message || JSON.stringify(item.details || {})}
                                 </span>
                             </div>

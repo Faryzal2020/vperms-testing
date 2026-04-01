@@ -1,8 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useApi } from '../../hooks/useApi';
 
 export default function DeviceHeader({ device, telemetry }) {
     const navigate = useNavigate();
+    const api = useApi();
+    const [commandLoading, setCommandLoading] = useState(false);
+    const [commandError, setCommandError] = useState('');
 
     // Status Logic
     const isOnline = telemetry?.realTimeStatus?.connection_status === 'online';
@@ -20,6 +24,21 @@ export default function DeviceHeader({ device, telemetry }) {
     const powerVoltage = telemetry?.io_elements?.['67']
         ? `${(telemetry.io_elements['67'] / 1000).toFixed(1)}V`
         : null;
+
+    const handleCommand = async (type) => {
+        if (!confirm(`Are you sure you want to send ${type.toUpperCase()} command?`)) return;
+        setCommandLoading(true);
+        setCommandError('');
+        try {
+            await api.post(`/devices/${device.id}/${type}`, { delay: 0 });
+            alert(`${type.toUpperCase()} command sent to device successfully.`);
+        } catch (err) {
+            setCommandError(err.message || 'Failed to send command');
+            setTimeout(() => setCommandError(''), 5000);
+        } finally {
+            setCommandLoading(false);
+        }
+    };
 
     return (
         <div className="card" style={{ marginBottom: '1.5rem', padding: '1.5rem' }}>
@@ -39,7 +58,30 @@ export default function DeviceHeader({ device, telemetry }) {
                         <span className={`badge ${isOnline ? 'badge-success' : 'badge-warning'}`}>
                             {isOnline ? '🟢 Online' : '🟡 Offline'}
                         </span>
+                        
+                        {/* Command Buttons */}
+                        <button 
+                            className="btn btn-sm btn-danger" 
+                            disabled={commandLoading || !isOnline}
+                            onClick={() => handleCommand('immobilize')}
+                            title={!isOnline ? 'Device must be online' : ''}
+                        >
+                            Immobilize
+                        </button>
+                        <button 
+                            className="btn btn-sm btn-success" 
+                            disabled={commandLoading || !isOnline}
+                            onClick={() => handleCommand('mobilize')}
+                            title={!isOnline ? 'Device must be online' : ''}
+                        >
+                            Mobilize
+                        </button>
                     </div>
+                    {commandError && (
+                        <div style={{ color: 'var(--danger)', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+                            {commandError}
+                        </div>
+                    )}
                     <div style={{ color: 'var(--text-muted)', display: 'flex', gap: '1.5rem', fontSize: '0.9rem' }}>
                         <span>
                             <strong>IMEI:</strong> <span style={{ fontFamily: 'monospace' }}>{device.imei}</span>
