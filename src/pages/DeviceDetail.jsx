@@ -75,8 +75,8 @@ export default function DeviceDetail() {
                 timeParams: { startTime: range.start.toISOString(), endTime: range.end.toISOString() },
                 pagination: { enabled: true, page: page, limit: 50 }
             });
-            setEvents(res.data || []);
-            setEventsPagination({ page, limit: 50, hasNext: (res.meta?.returnedEvents || 0) === 50 });
+            setEvents(res.data?.events || []);
+            setEventsPagination({ page, limit: 50, hasNext: (res.data?.meta?.returnedEvents || 0) === 50 });
         } catch (e) {
             console.warn('Failed to load events', e);
         }
@@ -87,8 +87,8 @@ export default function DeviceDetail() {
         try {
             const range = getTimeRange(timePreset);
             const res = await api.get(`/vehicles/${vehicleId}/recent-activity?start=${range.start.toISOString()}&end=${range.end.toISOString()}&page=${page}&limit=50`);
-            setTimeline(res.data || []);
-            setTimelinePagination({ page, limit: 50, hasNext: (res.pagination?.total > page * 50) });
+            setTimeline(res.data?.activities || []);
+            setTimelinePagination({ page, limit: 50, hasNext: ((res.data?.pagination?.total || 0) > page * 50) });
         } catch (e) {
             console.warn('Failed to load timeline', e);
         }
