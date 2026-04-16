@@ -11,8 +11,15 @@ export default function Roles() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [saving, setSaving] = useState(false);
+    const [permissionSearch, setPermissionSearch] = useState('');
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showInheritanceModal, setShowInheritanceModal] = useState(false);
+    const [showPermissionModal, setShowPermissionModal] = useState(false);
+    const [permissionFormData, setPermissionFormData] = useState({
+        key: '',
+        description: '',
+        category: '',
+    });
     const [formData, setFormData] = useState({
         name: '',
         description: '',
@@ -32,8 +39,8 @@ export default function Roles() {
         }
     }, [selectedRole]);
 
-    const loadRoles = async () => {
-        setLoading(true);
+    const loadRoles = async (showLoading = true) => {
+        if (showLoading) setLoading(true);
         try {
             const data = await api.get('/roles');
             console.log('DEBUG: Roles Data:', data);
@@ -42,7 +49,7 @@ export default function Roles() {
             console.error('DEBUG: Failed to load roles', err);
             setError(err.message);
         } finally {
-            setLoading(false);
+            if (showLoading) setLoading(false);
         }
     };
 
@@ -92,6 +99,21 @@ export default function Roles() {
         }
     };
 
+    const handleCreatePermission = async (e) => {
+        e.preventDefault();
+        setSaving(true);
+        try {
+            await api.post('/permissions', permissionFormData);
+            setShowPermissionModal(false);
+            setPermissionFormData({ key: '', description: '', category: '' });
+            await loadPermissions();
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const handleDeleteRole = async (roleId) => {
         if (!confirm('Are you sure you want to delete this role? This cannot be undone.')) return;
 
@@ -134,7 +156,7 @@ export default function Roles() {
             }
 
             await loadRolePermissions(selectedRole.id);
-            await loadRoles();
+            await loadRoles(false);
         } catch (err) {
             setError(err.message);
         } finally {
@@ -153,7 +175,7 @@ export default function Roles() {
             });
 
             await loadRolePermissions(selectedRole.id);
-            await loadRoles();
+            await loadRoles(false);
         } catch (err) {
             setError(err.message);
         } finally {
@@ -168,7 +190,7 @@ export default function Roles() {
         try {
             await api.post(`/roles/${selectedRole.id}/inheritance`, { inheritsFromId: parentRoleId });
             await loadRoleInheritance(selectedRole.id);
-            await loadRoles();
+            await loadRoles(false);
             setShowInheritanceModal(false);
         } catch (err) {
             setError(err.message);
@@ -184,7 +206,7 @@ export default function Roles() {
         try {
             await api.delete(`/roles/${selectedRole.id}/inheritance/${parentRoleId}`);
             await loadRoleInheritance(selectedRole.id);
-            await loadRoles();
+            await loadRoles(false);
         } catch (err) {
             setError(err.message);
         } finally {
@@ -202,8 +224,16 @@ export default function Roles() {
         setFormData({ name: '', description: '', priority: 0, isDefault: false });
     };
 
+    // Filter permissions based on search
+    const filteredPermissions = permissions.filter(perm => {
+        const query = permissionSearch.toLowerCase();
+        return perm.key.toLowerCase().includes(query) ||
+               (perm.description && perm.description.toLowerCase().includes(query)) ||
+               (perm.category && perm.category.toLowerCase().includes(query));
+    });
+
     // Group permissions by category
-    const groupedPermissions = permissions.reduce((acc, perm) => {
+    const groupedPermissions = filteredPermissions.reduce((acc, perm) => {
         const category = perm.category || 'other';
         if (!acc[category]) acc[category] = [];
         acc[category].push(perm);
@@ -223,9 +253,14 @@ export default function Roles() {
                     <h1 className="page-title">Roles & Permissions</h1>
                     <p className="page-subtitle">Manage role-based access control</p>
                 </div>
-                <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
-                    + Create Role
-                </button>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button className="btn" onClick={() => setShowPermissionModal(true)}>
+                        + Create Permission
+                    </button>
+                    <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
+                        + Create Role
+                    </button>
+                </div>
             </div>
 
             {error && <div className="message message-error">{error}</div>}
@@ -289,14 +324,28 @@ export default function Roles() {
 
                     {/* Permissions & Inheritance */}
                     <div className="card">
-                        <div className="card-header">
-                            <h3 className="card-title">
-                                {selectedRole ? `${selectedRole.name}` : 'Select a role'}
-                            </h3>
+                        <div className="card-header" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'stretch' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <h3 className="card-title">
+                                    {selectedRole ? `${selectedRole.name}` : 'Select a role'}
+                                </h3>
+                                {selectedRole && (
+                                    <button className="btn btn-sm" onClick={() => setShowInheritanceModal(true)}>
+                                        + Add Inheritance
+                                    </button>
+                                )}
+                            </div>
                             {selectedRole && (
-                                <button className="btn btn-sm" onClick={() => setShowInheritanceModal(true)}>
-                                    + Add Inheritance
-                                </button>
+                                <div className="form-group" style={{ margin: 0 }}>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="Search permissions..."
+                                        value={permissionSearch}
+                                        onChange={(e) => setPermissionSearch(e.target.value)}
+                                        style={{ background: 'var(--bg-body)' }}
+                                    />
+                                </div>
                             )}
                         </div>
                         <div className="card-body">
@@ -507,6 +556,59 @@ export default function Roles() {
                                 <button type="button" className="btn" onClick={() => setShowCreateModal(false)}>Cancel</button>
                                 <button type="submit" className="btn btn-primary" disabled={saving}>
                                     {saving ? 'Creating...' : 'Create Role'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Create Permission Modal */}
+            {showPermissionModal && (
+                <div className="modal-overlay" onClick={() => setShowPermissionModal(false)}>
+                    <div className="modal" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>Create New Permission Node</h2>
+                            <button className="modal-close" onClick={() => setShowPermissionModal(false)}>×</button>
+                        </div>
+                        <form onSubmit={handleCreatePermission}>
+                            <div className="modal-body">
+                                <div className="form-group">
+                                    <label className="form-label">Permission Key *</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        value={permissionFormData.key}
+                                        onChange={(e) => setPermissionFormData({ ...permissionFormData, key: e.target.value })}
+                                        required
+                                        placeholder="e.g., vehicles:activate"
+                                    />
+                                    <small style={{ color: 'var(--text-muted)' }}>Format: resource:action (lowercase)</small>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Description</label>
+                                    <textarea
+                                        className="form-input"
+                                        value={permissionFormData.description}
+                                        onChange={(e) => setPermissionFormData({ ...permissionFormData, description: e.target.value })}
+                                        placeholder="What this permission allows"
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Category</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        value={permissionFormData.category}
+                                        onChange={(e) => setPermissionFormData({ ...permissionFormData, category: e.target.value })}
+                                        placeholder="e.g., vehicles, users, reports"
+                                    />
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" className="btn" onClick={() => setShowPermissionModal(false)}>Cancel</button>
+                                <button type="submit" className="btn btn-primary" disabled={saving}>
+                                    {saving ? 'Creating...' : 'Create Permission'}
                                 </button>
                             </div>
                         </form>
