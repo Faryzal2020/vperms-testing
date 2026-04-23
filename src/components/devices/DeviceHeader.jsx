@@ -49,6 +49,7 @@ export default function DeviceHeader({ device, telemetry }) {
                             className="btn btn-sm"
                             onClick={() => navigate('/devices')}
                             style={{ padding: '0.25rem 0.5rem', marginRight: '0.5rem' }}
+                            title="Navigate to /devices"
                         >
                             ← Back
                         </button>
@@ -64,7 +65,7 @@ export default function DeviceHeader({ device, telemetry }) {
                             className="btn btn-sm btn-danger" 
                             disabled={commandLoading || !isOnline}
                             onClick={() => handleCommand('immobilize')}
-                            title={!isOnline ? 'Device must be online' : ''}
+                            title={!isOnline ? 'Device must be online' : `POST /api/v1/devices/${device.id}/immobilize`}
                         >
                             Immobilize
                         </button>
@@ -72,7 +73,7 @@ export default function DeviceHeader({ device, telemetry }) {
                             className="btn btn-sm btn-success" 
                             disabled={commandLoading || !isOnline}
                             onClick={() => handleCommand('mobilize')}
-                            title={!isOnline ? 'Device must be online' : ''}
+                            title={!isOnline ? 'Device must be online' : `POST /api/v1/devices/${device.id}/mobilize`}
                         >
                             Mobilize
                         </button>

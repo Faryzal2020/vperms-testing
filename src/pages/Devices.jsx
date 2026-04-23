@@ -154,7 +154,7 @@ export default function Devices() {
                     <p className="page-subtitle">{pagination.total} GPS devices registered</p>
                 </div>
                 {hasPermission('devices:create') && (
-                    <button className="btn btn-primary" onClick={() => { resetForm(); setEditingDevice(null); setShowModal(true); }}>
+                    <button className="btn btn-primary" onClick={() => { resetForm(); setEditingDevice(null); setShowModal(true); }} title="POST /api/v1/devices">
                         + Add Device
                     </button>
                 )}
@@ -214,13 +214,33 @@ export default function Devices() {
                                         </td>
                                         <td>
                                             {hasPermission('devices:read') && (
-                                                <button className="btn btn-sm btn-primary" style={{ marginRight: '0.5rem' }} onClick={() => navigate(`/devices/${device.id}`)}>Monitor</button>
+                                                <button 
+                                                    className="btn btn-sm btn-primary" 
+                                                    style={{ marginRight: '0.5rem' }} 
+                                                    onClick={() => navigate(`/devices/${device.id}`)}
+                                                    title={`GET /api/v1/devices/${device.id}`}
+                                                >
+                                                    Monitor
+                                                </button>
                                             )}
                                             {hasPermission('devices:update') && (
-                                                <button className="btn btn-sm" onClick={() => openEditModal(device)}>Edit</button>
+                                                <button 
+                                                    className="btn btn-sm" 
+                                                    onClick={() => openEditModal(device)}
+                                                    title={`PUT /api/v1/devices/${device.id}`}
+                                                >
+                                                    Edit
+                                                </button>
                                             )}
                                             {hasPermission('devices:delete') && (
-                                                <button className="btn btn-sm btn-danger" style={{ marginLeft: '0.5rem' }} onClick={() => handleDelete(device.id)}>Delete</button>
+                                                <button 
+                                                    className="btn btn-sm btn-danger" 
+                                                    style={{ marginLeft: '0.5rem' }} 
+                                                    onClick={() => handleDelete(device.id)}
+                                                    title={`DELETE /api/v1/devices/${device.id}`}
+                                                >
+                                                    Delete
+                                                </button>
                                             )}
                                             {!hasPermission('devices:read') && !hasPermission('devices:update') && !hasPermission('devices:delete') && (
                                                 <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No actions</span>

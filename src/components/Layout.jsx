@@ -26,18 +26,18 @@ export default function Layout() {
 
                 <nav className="sidebar-nav">
                     <div className="nav-section">Main</div>
-                    <NavLink to="/" end className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                    <NavLink to="/" end className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} title="GET /api/v1/dashboard/summary">
                         📊 Dashboard
                     </NavLink>
 
                     {hasPermission('vehicles:read') && (
-                        <NavLink to="/vehicles" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                        <NavLink to="/vehicles" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} title="GET /api/v1/vehicles">
                             🚗 Vehicles
                         </NavLink>
                     )}
 
                     {hasPermission('devices:read') && (
-                        <NavLink to="/devices" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                        <NavLink to="/devices" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} title="GET /api/v1/devices">
                             📡 Devices
                         </NavLink>
                     )}
@@ -47,13 +47,13 @@ export default function Layout() {
                     )}
 
                     {hasPermission('owners:read') && (
-                        <NavLink to="/owners" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                        <NavLink to="/owners" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} title="GET /api/v1/owners">
                             👤 Owners
                         </NavLink>
                     )}
 
                     {hasPermission('sim_cards:read') && (
-                        <NavLink to="/simcards" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                        <NavLink to="/simcards" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} title="GET /api/v1/simcards">
                             📱 SIM Cards
                         </NavLink>
                     )}
@@ -63,31 +63,31 @@ export default function Layout() {
                     )}
 
                     {hasPermission('roles:read') && (
-                        <NavLink to="/roles" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                        <NavLink to="/roles" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} title="GET /api/v1/roles">
                             🔐 Roles & Permissions
                         </NavLink>
                     )}
 
                     {hasPermission('users:read') && (
-                        <NavLink to="/users" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                        <NavLink to="/users" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} title="GET /api/v1/users">
                             👥 Users
                         </NavLink>
                     )}
 
                     {hasPermission('companies:read') && (
-                        <NavLink to="/companies" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                        <NavLink to="/companies" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} title="GET /api/v1/companies">
                             🏢 Companies
                         </NavLink>
                     )}
 
                     {hasPermission('admin:read') && (
-                        <NavLink to="/system" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                        <NavLink to="/system" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} title="GET /api/v1/system/status">
                             ⚙️ System
                         </NavLink>
                     )}
 
                     {hasPermission('devices:write') && (
-                        <NavLink to="/can-configs" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                        <NavLink to="/can-configs" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} title="GET /api/v1/can-configs">
                             🔧 CAN Configs
                         </NavLink>
                     )}

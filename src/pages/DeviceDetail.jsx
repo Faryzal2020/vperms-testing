@@ -222,14 +222,20 @@ export default function DeviceDetail() {
 
             <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    {['overview', 'data', 'events', 'timeline'].map(tab => (
+                    {[
+                        { id: 'overview', title: `GET /api/v1/devices/${id}` },
+                        { id: 'data', title: `POST /api/v1/history/${id}` },
+                        { id: 'events', title: `POST /api/v1/history/${id}/events` },
+                        { id: 'timeline', title: `GET /api/v1/vehicles/${device?.vehicle?.id || ':vehicleId'}/recent-activity` }
+                    ].map(tab => (
                         <button
-                            key={tab}
-                            className={`btn ${activeTab === tab ? 'btn-primary' : ''}`}
-                            onClick={() => setActiveTab(tab)}
+                            key={tab.id}
+                            className={`btn ${activeTab === tab.id ? 'btn-primary' : ''}`}
+                            onClick={() => setActiveTab(tab.id)}
                             style={{ textTransform: 'capitalize' }}
+                            title={tab.title}
                         >
-                            {tab}
+                            {tab.id}
                         </button>
                     ))}
                 </div>
