@@ -32,6 +32,7 @@ export function SocketProvider({ children }) {
             ws.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
+                    console.log('[WebSocket] Payload received:', data);
                     setMessages(prev => {
                         // Keep only last 100 messages to avoid memory issues
                         const newMessages = [...prev, data];
