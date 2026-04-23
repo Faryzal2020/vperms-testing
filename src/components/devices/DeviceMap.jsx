@@ -42,17 +42,28 @@ export default function DeviceMap({ track, currentPosition, height = '400px' }) 
         // 1. Handle Polyline (History Track)
         if (track && track.length > 0) {
             // Leaflet expects [lat, lng], API gives [lng, lat]
-            const latLngs = track.map(p => [p.coordinates[1], p.coordinates[0]]);
+            // Add validation to ensure p.coordinates exists and has numbers
+            const latLngs = track
+                .filter(p => p.coordinates && 
+                            typeof p.coordinates[0] === 'number' && 
+                            typeof p.coordinates[1] === 'number' &&
+                            p.coordinates[0] !== 0 && p.coordinates[1] !== 0)
+                .map(p => [p.coordinates[1], p.coordinates[0]]);
 
-            if (polylineRef.current) {
-                polylineRef.current.setLatLngs(latLngs);
-            } else {
-                polylineRef.current = L.polyline(latLngs, { color: 'blue', weight: 4, opacity: 0.7 }).addTo(map);
-            }
+            if (latLngs.length > 0) {
+                if (polylineRef.current) {
+                    polylineRef.current.setLatLngs(latLngs);
+                } else {
+                    polylineRef.current = L.polyline(latLngs, { color: 'blue', weight: 4, opacity: 0.7 }).addTo(map);
+                }
 
-            // Fit bounds to track if no current position
-            if (!currentPosition && latLngs.length > 0) {
-                map.fitBounds(polylineRef.current.getBounds());
+                // Fit bounds to track if no current position
+                if (!currentPosition && latLngs.length > 0) {
+                    map.fitBounds(polylineRef.current.getBounds());
+                }
+            } else if (polylineRef.current) {
+                polylineRef.current.remove();
+                polylineRef.current = null;
             }
         } else {
             if (polylineRef.current) {
@@ -62,10 +73,11 @@ export default function DeviceMap({ track, currentPosition, height = '400px' }) 
         }
 
         // 2. Handle Marker (Current Position)
-        if (currentPosition) {
-            const lat = currentPosition.latitude;
-            const lng = currentPosition.longitude;
+        const lat = currentPosition?.latitude;
+        const lng = currentPosition?.longitude;
+        const hasValidCoords = typeof lat === 'number' && typeof lng === 'number' && lat !== 0 && lng !== 0;
 
+        if (hasValidCoords) {
             if (markerRef.current) {
                 markerRef.current.setLatLng([lat, lng]);
             } else {
@@ -76,14 +88,19 @@ export default function DeviceMap({ track, currentPosition, height = '400px' }) 
             const popupContent = `
                 <div>
                     <strong>Current Location</strong><br />
-                    Speed: ${currentPosition.speed} km/h<br />
-                    Heading: ${currentPosition.heading}°
+                    Speed: ${currentPosition.speed || 0} km/h<br />
+                    Heading: ${currentPosition.heading || 0}°
                 </div>
             `;
             markerRef.current.bindPopup(popupContent);
 
             // Center map on marker
             map.setView([lat, lng], map.getZoom());
+        } else {
+            if (markerRef.current) {
+                markerRef.current.remove();
+                markerRef.current = null;
+            }
         }
 
     }, [track, currentPosition]);
