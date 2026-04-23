@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
+import { useSocket } from '../context/SocketContext';
 import { usePermissions } from '../hooks/usePermissions';
 
 export default function Devices() {
     const api = useApi();
     const navigate = useNavigate();
     const { hasPermission } = usePermissions();
+    const { lastMessage } = useSocket();
     const [devices, setDevices] = useState([]);
     const [simCards, setSimCards] = useState([]);
     const [vehicles, setVehicles] = useState([]);
@@ -36,7 +38,27 @@ export default function Devices() {
         if (hasPermission('vehicles:read') || hasPermission('vehicles:list')) {
             loadVehicles();
         }
-    }, [pagination.page]); // Removed hasPermission to prevent infinite loop
+    }, [pagination.page]); 
+
+    // Handle real-time updates for connection status
+    useEffect(() => {
+        if (lastMessage && lastMessage.type === 'telemetry_update') {
+            const imei = lastMessage.imei;
+            setDevices(prev => prev.map(d => {
+                if (d.imei === imei) {
+                    return {
+                        ...d,
+                        realTimeStatus: {
+                            ...d.realTimeStatus,
+                            connection_status: 'online',
+                            last_update: lastMessage.timestamp
+                        }
+                    };
+                }
+                return d;
+            }));
+        }
+    }, [lastMessage]);
 
     const loadDevices = async () => {
         setLoading(true);

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
+import { useSocket } from '../context/SocketContext';
 import DeviceHeader from '../components/devices/DeviceHeader';
 import DeviceMap from '../components/devices/DeviceMap';
 import TelemetryStats from '../components/devices/TelemetryStats';
@@ -12,6 +13,7 @@ export default function DeviceDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
     const api = useApi();
+    const { subscribe, unsubscribe, lastMessageFor } = useSocket();
 
     // State
     const [device, setDevice] = useState(null);
@@ -101,6 +103,11 @@ export default function DeviceDetail() {
             const deviceData = await api.get(`/devices/${id}`);
             setDevice(deviceData.data);
             
+            // Subscribe to live updates via WebSocket
+            if (deviceData.data?.imei) {
+                subscribe(deviceData.data.imei);
+            }
+
             const range = getTimeRange(timePreset);
 
             try {
@@ -124,19 +131,77 @@ export default function DeviceDetail() {
         } finally {
             setLoading(false);
         }
-    }, [id, timePreset, api, getTimeRange, loadHistory, loadEvents, loadTimeline]);
+    }, [id, timePreset, api, getTimeRange, loadHistory, loadEvents, loadTimeline, subscribe]);
 
     useEffect(() => {
         loadData();
+        return () => {
+            if (device?.imei) unsubscribe(device.imei);
+        };
+    }, [id]); // Only reload on ID change
 
+    // Listen for WebSocket updates
+    useEffect(() => {
+        if (!device?.imei) return;
+        
+        const update = lastMessageFor(device.imei);
+        if (update && update.type === 'telemetry_update') {
+            const tel = update.data;
+            if (!tel) return;
+
+            // Normalize WebSocket data to match API format for RealTimeStatus
+            const newStatus = {
+                latitude: tel.gps?.latitude || tel.latitude,
+                longitude: tel.gps?.longitude || tel.longitude,
+                speed: tel.gps?.speed || tel.speed,
+                heading: tel.gps?.heading || tel.heading,
+                satellites: tel.gps?.satellites || tel.satellites,
+                ignition: tel.ignition,
+                connection_status: 'online',
+                last_update: update.timestamp || new Date().toISOString(),
+                can_details: tel.can_details
+            };
+
+            setDevice(prev => ({
+                ...prev,
+                realTimeStatus: newStatus
+            }));
+
+            // Optional: Update track with new point
+            if (newStatus.latitude && newStatus.longitude) {
+                setTrack(prev => {
+                    const lastPoint = prev[prev.length - 1];
+                    // Avoid duplicate points
+                    if (lastPoint && lastPoint.coordinates[0] === newStatus.longitude && lastPoint.coordinates[1] === newStatus.latitude) {
+                        return prev;
+                    }
+                    return [...prev, {
+                        coordinates: [newStatus.longitude, newStatus.latitude],
+                        timestamp: newStatus.last_update
+                    }];
+                });
+            }
+        }
+    }, [lastMessageFor, device?.imei]);
+
+    // Polling as fallback (less frequent)
+    useEffect(() => {
         const interval = setInterval(() => {
             api.get(`/devices/${id}`).then(res => {
-                if (res.data) setDevice(res.data);
+                if (res.data) {
+                    setDevice(prev => ({
+                        ...res.data,
+                        // Preserve newer WS status if available
+                        realTimeStatus: (prev && new Date(prev.realTimeStatus?.last_update) > new Date(res.data.realTimeStatus?.last_update))
+                            ? prev.realTimeStatus
+                            : res.data.realTimeStatus
+                    }));
+                }
             }).catch(e => console.error(e));
-        }, 30000);
+        }, 60000); // 1 minute polling fallback
 
         return () => clearInterval(interval);
-    }, [loadData, id, api]);
+    }, [id, api]);
 
     if (loading && !device) {
         return <div className="loading"><div className="spinner"></div></div>;

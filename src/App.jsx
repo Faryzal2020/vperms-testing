@@ -14,6 +14,7 @@ import SimCards from './pages/SimCards';
 import CanConfig from './pages/CanConfig';
 import Layout from './components/Layout';
 import { AuthContext } from './context/AuthContext';
+import { SocketProvider } from './context/SocketContext';
 import { API_BASE, BACKEND_URL } from './config';
 
 function App() {
@@ -92,24 +93,26 @@ function App() {
 
     return (
         <AuthContext.Provider value={{ user, token, login, logout, connectionError }}>
-            <BrowserRouter>
-                <Routes>
-                    <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
-                    <Route path="/" element={user ? <Layout /> : <Navigate to="/login" />}>
-                        <Route index element={<Dashboard />} />
-                        <Route path="vehicles" element={<Vehicles />} />
-                        <Route path="devices" element={<Devices />} />
-                        <Route path="devices/:id" element={<DeviceDetail />} />
-                        <Route path="system" element={<System />} />
-                        <Route path="roles" element={<Roles />} />
-                        <Route path="users" element={<Users />} />
-                        <Route path="companies" element={<Companies />} />
-                        <Route path="owners" element={<Owners />} />
-                        <Route path="simcards" element={<SimCards />} />
-                        <Route path="can-configs" element={<CanConfig />} />
-                    </Route>
-                </Routes>
-            </BrowserRouter>
+            <SocketProvider>
+                <BrowserRouter>
+                    <Routes>
+                        <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
+                        <Route path="/" element={user ? <Layout /> : <Navigate to="/login" />}>
+                            <Route index element={<Dashboard />} />
+                            <Route path="vehicles" element={<Vehicles />} />
+                            <Route path="devices" element={<Devices />} />
+                            <Route path="devices/:id" element={<DeviceDetail />} />
+                            <Route path="system" element={<System />} />
+                            <Route path="roles" element={<Roles />} />
+                            <Route path="users" element={<Users />} />
+                            <Route path="companies" element={<Companies />} />
+                            <Route path="owners" element={<Owners />} />
+                            <Route path="simcards" element={<SimCards />} />
+                            <Route path="can-configs" element={<CanConfig />} />
+                        </Route>
+                    </Routes>
+                </BrowserRouter>
+            </SocketProvider>
         </AuthContext.Provider>
     );
 }
