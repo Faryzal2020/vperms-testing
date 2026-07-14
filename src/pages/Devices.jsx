@@ -18,6 +18,7 @@ export default function Devices() {
     const [editingDevice, setEditingDevice] = useState(null);
     const [formData, setFormData] = useState({
         imei: '',
+        deviceType: 'TELTONIKA',
         deviceModel: 'FMC130',
         firmwareVersion: '',
         simCardId: '',
@@ -25,20 +26,31 @@ export default function Devices() {
         status: 'active',
     });
     const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 });
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchInput, setSearchInput] = useState('');
 
     useEffect(() => {
-        loadDevices();
+        const handler = setTimeout(() => {
+            if (searchQuery !== searchInput) {
+                setSearchQuery(searchInput);
+                setPagination(prev => ({ ...prev, page: 1 }));
+            }
+        }, 500);
+        return () => clearTimeout(handler);
+    }, [searchInput, searchQuery]);
 
-        // Only load SIM cards if user has permission
+    useEffect(() => {
         if (hasPermission('sim_cards:read') || hasPermission('sim_cards:list')) {
             loadSimCards();
         }
-        
-        // Only load vehicles if user has permission
         if (hasPermission('vehicles:read') || hasPermission('vehicles:list')) {
             loadVehicles();
         }
-    }, [pagination.page]); 
+    }, []);
+
+    useEffect(() => {
+        loadDevices();
+    }, [pagination.page, searchQuery]);
 
     // Handle real-time updates for connection status
     useEffect(() => {
@@ -63,7 +75,8 @@ export default function Devices() {
     const loadDevices = async () => {
         setLoading(true);
         try {
-            const data = await api.get(`/devices?page=${pagination.page}&limit=${pagination.limit}`);
+            const searchParam = searchQuery ? `&search=${encodeURIComponent(searchQuery)}` : '';
+            const data = await api.get(`/devices?page=${pagination.page}&limit=${pagination.limit}${searchParam}`);
             setDevices(data.data || []);
             setPagination(prev => ({ ...prev, total: data.pagination?.total || 0 }));
         } catch (err) {
@@ -98,6 +111,7 @@ export default function Devices() {
             // Prepare payload with proper type conversions
             const payload = {
                 imei: formData.imei,
+                deviceType: formData.deviceType || 'TELTONIKA',
                 deviceModel: formData.deviceModel || null,
                 firmwareVersion: formData.firmwareVersion || null,
                 simCardId: formData.simCardId || null, // Convert empty string to null
@@ -133,6 +147,7 @@ export default function Devices() {
         setEditingDevice(device);
         setFormData({
             imei: device.imei || '',
+            deviceType: device.deviceType || 'TELTONIKA',
             deviceModel: device.deviceModel || 'FMC130',
             firmwareVersion: device.firmwareVersion || '',
             simCardId: device.simCardId || '',
@@ -143,7 +158,7 @@ export default function Devices() {
     };
 
     const resetForm = () => {
-        setFormData({ imei: '', deviceModel: 'FMC130', firmwareVersion: '', simCardId: '', vehicleId: '', status: 'active' });
+        setFormData({ imei: '', deviceType: 'TELTONIKA', deviceModel: 'FMC130', firmwareVersion: '', simCardId: '', vehicleId: '', status: 'active' });
     };
 
     return (
@@ -160,6 +175,17 @@ export default function Devices() {
                 )}
             </div>
 
+            <div className="toolbar" style={{ marginBottom: '1rem', display: 'flex', gap: '1rem' }}>
+                <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="Search by IMEI, model, identifier..." 
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    style={{ maxWidth: '300px' }}
+                />
+            </div>
+
             {error && <div className="message message-error">{error}</div>}
 
             {loading ? (
@@ -171,6 +197,7 @@ export default function Devices() {
                             <thead>
                                 <tr>
                                     <th>IMEI</th>
+                                    <th>Device Type</th>
                                     <th>Model</th>
                                     <th>SIM Card</th>
                                     <th>Vehicle</th>
@@ -183,6 +210,7 @@ export default function Devices() {
                                 {devices.map(device => (
                                     <tr key={device.id}>
                                         <td><strong style={{ fontFamily: 'monospace' }}>{device.imei}</strong></td>
+                                        <td>{device.deviceType || '-'}</td>
                                         <td>{device.deviceModel}</td>
                                         <td>
                                             {device.simCard ? (
@@ -249,7 +277,7 @@ export default function Devices() {
                                     </tr>
                                 ))}
                                 {devices.length === 0 && (
-                                    <tr><td colSpan="7" className="empty-state">No devices found</td></tr>
+                                    <tr><td colSpan="8" className="empty-state">No devices found</td></tr>
                                 )}
                             </tbody>
                         </table>
@@ -278,6 +306,14 @@ export default function Devices() {
                                     <label className="form-label">IMEI *</label>
                                     <input type="text" className="form-input" value={formData.imei} onChange={(e) => setFormData({ ...formData, imei: e.target.value })} placeholder="15-digit IMEI" pattern="\d{15}" required disabled={!!editingDevice} />
                                     <small style={{ color: 'var(--text-muted)' }}>Cannot be changed after creation</small>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Device Type</label>
+                                    <select className="form-input" value={formData.deviceType} onChange={(e) => setFormData({ ...formData, deviceType: e.target.value })}>
+                                        <option value="TELTONIKA">TELTONIKA</option>
+                                        <option value="KG22">KG22</option>
+                                        <option value="TUYA">TUYA</option>
+                                    </select>
                                 </div>
                                 <div className="grid grid-2">
                                     <div className="form-group">
