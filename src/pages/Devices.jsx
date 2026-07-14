@@ -304,7 +304,7 @@ export default function Devices() {
                             <div className="modal-body">
                                 <div className="form-group">
                                     <label className="form-label">IMEI *</label>
-                                    <input type="text" className="form-input" value={formData.imei} onChange={(e) => setFormData({ ...formData, imei: e.target.value })} placeholder="15-digit IMEI" pattern="\d{15}" required disabled={!!editingDevice} />
+                                    <input type="text" className="form-input" value={formData.imei} onChange={(e) => setFormData({ ...formData, imei: e.target.value })} placeholder="10 to 15-digit IMEI" pattern="\d{10,15}" required disabled={!!editingDevice} />
                                     <small style={{ color: 'var(--text-muted)' }}>Cannot be changed after creation</small>
                                 </div>
                                 <div className="form-group">
