@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { BACKEND_URL } from '../config';
 
 const SocketContext = createContext(null);
@@ -65,7 +65,7 @@ export function SocketProvider({ children }) {
         };
     }, []);
 
-    const subscribe = (id) => {
+    const subscribe = useCallback((id) => {
         if (!id) return;
         const idStr = id.toString();
         subscribersRef.current.add(idStr);
@@ -76,9 +76,9 @@ export function SocketProvider({ children }) {
                 identifiers: [idStr]
             }));
         }
-    };
+    }, [connected]);
 
-    const unsubscribe = (id) => {
+    const unsubscribe = useCallback((id) => {
         if (!id) return;
         const idStr = id.toString();
         subscribersRef.current.delete(idStr);
@@ -89,16 +89,16 @@ export function SocketProvider({ children }) {
                 identifiers: [idStr]
             }));
         }
-    };
+    }, [connected]);
 
-    const lastMessageFor = (id) => {
+    const lastMessageFor = useCallback((id) => {
         if (!id) return null;
         const idStr = id.toString();
         return [...messages].reverse().find(msg => 
             msg.type === 'telemetry_update' && 
             (msg.imei?.toString() === idStr || msg.deviceId?.toString() === idStr || msg.vehicleId?.toString() === idStr)
         );
-    };
+    }, [messages]);
 
     return (
         <SocketContext.Provider value={{ connected, subscribe, unsubscribe, lastMessage: messages[messages.length - 1], lastMessageFor }}>
