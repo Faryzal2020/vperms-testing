@@ -117,6 +117,7 @@ export default function DeviceDetail() {
 
             try {
                 const trackData = await api.get(`/telemetry/${id}/track?start=${range.start.toISOString()}&end=${range.end.toISOString()}&maxPoints=500`);
+                console.log(`[Debug] Fetched track points: ${trackData.data.track?.length || 0} from API (requested maxPoints=500).`);
                 setTrack(trackData.data.track || []);
             } catch (e) { console.warn('Failed to load track'); }
 
@@ -202,6 +203,45 @@ export default function DeviceDetail() {
 
         return () => clearInterval(interval);
     }, [id, api]);
+
+    // Debugging utility for frontend gap analysis
+    useEffect(() => {
+        window.analyzeFrontendGaps = () => {
+            if (!track || track.length === 0) {
+                console.log("No track data available on frontend.");
+                return;
+            }
+            console.log(`Analyzing ${track.length} points on frontend...`);
+            let gaps = 0;
+            let maxGap = 0;
+            let maxGapIndex = -1;
+            
+            for (let i = 1; i < track.length; i++) {
+                const prev = new Date(track[i-1].timestamp).getTime();
+                const curr = new Date(track[i].timestamp).getTime();
+                const diffMs = curr - prev;
+                const diffMins = diffMs / 1000 / 60;
+                
+                if (diffMins > 10) {
+                    console.warn(`Gap found between index ${i-1} and ${i}: ${diffMins.toFixed(2)} minutes`);
+                    console.log(`  From: ${track[i-1].timestamp} to ${track[i].timestamp}`);
+                    gaps++;
+                }
+                if (diffMins > maxGap) {
+                    maxGap = diffMins;
+                    maxGapIndex = i;
+                }
+            }
+            console.log(`Analysis complete. Found ${gaps} gaps > 10 mins on frontend.`);
+            if (maxGap > 0) {
+                console.log(`Maximum gap: ${maxGap.toFixed(2)} minutes (between index ${maxGapIndex-1} and ${maxGapIndex})`);
+            }
+        };
+
+        return () => {
+            delete window.analyzeFrontendGaps;
+        };
+    }, [track]);
 
     if (loading && !device) {
         return <div className="loading"><div className="spinner"></div></div>;
