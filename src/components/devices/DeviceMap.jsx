@@ -41,25 +41,45 @@ export default function DeviceMap({ track, currentPosition, height = '400px' }) 
 
         // 1. Handle Polyline (History Track)
         if (track && track.length > 0) {
-            // Leaflet expects [lat, lng], API gives [lng, lat]
-            // Add validation to ensure p.coordinates exists and has numbers
-            const latLngs = track
-                .filter(p => p.coordinates && 
-                            typeof p.coordinates[0] === 'number' && 
-                            typeof p.coordinates[1] === 'number' &&
-                            p.coordinates[0] !== 0 && p.coordinates[1] !== 0)
-                .map(p => [p.coordinates[1], p.coordinates[0]]);
+            const tracksByDay = {};
+            let hasPoints = false;
+            
+            track.forEach(p => {
+                if (p.coordinates && 
+                    typeof p.coordinates[0] === 'number' && 
+                    typeof p.coordinates[1] === 'number' &&
+                    p.coordinates[0] !== 0 && p.coordinates[1] !== 0) {
+                    
+                    const date = new Date(p.timestamp).toLocaleDateString();
+                    if (!tracksByDay[date]) tracksByDay[date] = [];
+                    tracksByDay[date].push([p.coordinates[1], p.coordinates[0]]);
+                    hasPoints = true;
+                }
+            });
 
-            if (latLngs.length > 0) {
+            if (hasPoints) {
                 if (polylineRef.current) {
-                    polylineRef.current.setLatLngs(latLngs);
-                } else {
-                    polylineRef.current = L.polyline(latLngs, { color: 'blue', weight: 4, opacity: 0.7 }).addTo(map);
+                    polylineRef.current.remove();
+                }
+                
+                polylineRef.current = L.layerGroup().addTo(map);
+                const colors = ['#3388ff', '#ff3333', '#33cc33', '#ff9933', '#9933ff', '#33cccc', '#ff3399'];
+                let colorIdx = 0;
+                let allBounds = L.latLngBounds([]);
+
+                for (const date in tracksByDay) {
+                    const latLngs = tracksByDay[date];
+                    if (latLngs.length > 0) {
+                        const pl = L.polyline(latLngs, { color: colors[colorIdx % colors.length], weight: 4, opacity: 0.7 });
+                        pl.addTo(polylineRef.current);
+                        allBounds.extend(pl.getBounds());
+                        colorIdx++;
+                    }
                 }
 
                 // Fit bounds to track if no current position
-                if (!currentPosition && latLngs.length > 0) {
-                    map.fitBounds(polylineRef.current.getBounds());
+                if (!currentPosition && colorIdx > 0) {
+                    map.fitBounds(allBounds);
                 }
             } else if (polylineRef.current) {
                 polylineRef.current.remove();

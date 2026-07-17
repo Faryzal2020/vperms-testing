@@ -96,18 +96,36 @@ export default function DeviceDetail() {
         }
     }, [timePreset, api, getTimeRange]);
 
-    const loadData = useCallback(async () => {
+    const loadDevice = useCallback(async () => {
         setLoading(true);
         setError('');
         try {
             const deviceData = await api.get(`/devices/${id}`);
             setDevice(deviceData.data);
-            
-            // Subscribe to live updates via WebSocket
-            if (deviceData.data?.imei) {
-                subscribe(deviceData.data.imei);
-            }
+        } catch (err) {
+            setError(err.message || 'Failed to load device data');
+        } finally {
+            setLoading(false);
+        }
+    }, [id, api]);
 
+    useEffect(() => {
+        loadDevice();
+    }, [id, loadDevice]);
+
+    // Handle WebSocket Subscription separately
+    useEffect(() => {
+        if (device?.imei) {
+            subscribe(device.imei);
+            return () => unsubscribe(device.imei);
+        }
+    }, [device?.imei, subscribe, unsubscribe]);
+
+    // Load time-dependent data (track, history, etc) when timePreset changes
+    useEffect(() => {
+        if (!device?.id) return;
+        
+        const loadTimeData = async () => {
             const range = getTimeRange(timePreset);
 
             try {
@@ -123,23 +141,13 @@ export default function DeviceDetail() {
 
             await loadHistory(1);
             await loadEvents(1);
-            if (deviceData.data.vehicle?.id) {
-                await loadTimeline(deviceData.data.vehicle.id, 1);
+            if (device.vehicle?.id) {
+                await loadTimeline(device.vehicle.id, 1);
             }
-
-        } catch (err) {
-            setError(err.message || 'Failed to load device data');
-        } finally {
-            setLoading(false);
-        }
-    }, [id, timePreset, api, getTimeRange, loadHistory, loadEvents, loadTimeline, subscribe]);
-
-    useEffect(() => {
-        loadData();
-        return () => {
-            if (device?.imei) unsubscribe(device.imei);
         };
-    }, [id]); // Only reload on ID change
+
+        loadTimeData();
+    }, [id, timePreset, device?.id, device?.vehicle?.id, getTimeRange, loadHistory, loadEvents, loadTimeline, api]);
 
     // Listen for WebSocket updates
     useEffect(() => {
