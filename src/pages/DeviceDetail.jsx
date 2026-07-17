@@ -116,8 +116,8 @@ export default function DeviceDetail() {
             } catch (e) { console.warn('Failed to load summary'); }
 
             try {
-                const trackData = await api.get(`/telemetry/${id}/track?start=${range.start.toISOString()}&end=${range.end.toISOString()}&maxPoints=500`);
-                console.log(`[Debug] Fetched track points: ${trackData.data.track?.length || 0} from API (requested maxPoints=500).`);
+                const trackData = await api.get(`/telemetry/${id}/track?start=${range.start.toISOString()}&end=${range.end.toISOString()}&maxPoints=20000`);
+                console.log(`[Debug] Fetched track points: ${trackData.data.track?.length || 0} from API (requested maxPoints=20000).`);
                 setTrack(trackData.data.track || []);
             } catch (e) { console.warn('Failed to load track'); }
 
