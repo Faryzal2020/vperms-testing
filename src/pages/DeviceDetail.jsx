@@ -77,8 +77,8 @@ export default function DeviceDetail() {
                 timeParams: { startTime: range.start.toISOString(), endTime: range.end.toISOString() },
                 pagination: { enabled: true, page: page, limit: 50 }
             });
-            setEvents(res.data?.events || []);
-            setEventsPagination({ page, limit: 50, hasNext: (res.data?.meta?.returnedEvents || 0) === 50 });
+            setEvents(res.data?.data || []);
+            setEventsPagination({ page, limit: 50, hasNext: res.data?.pagination?.hasMore || false });
         } catch (e) {
             console.warn('Failed to load events', e);
         }
