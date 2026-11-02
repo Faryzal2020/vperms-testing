@@ -12,6 +12,7 @@ import Companies from './pages/Companies';
 import Owners from './pages/Owners';
 import SimCards from './pages/SimCards';
 import CanConfig from './pages/CanConfig';
+import OpenApiKeys from './pages/OpenApiKeys';
 import Layout from './components/Layout';
 import { AuthContext } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
@@ -109,6 +110,7 @@ function App() {
                             <Route path="owners" element={<Owners />} />
                             <Route path="simcards" element={<SimCards />} />
                             <Route path="can-configs" element={<CanConfig />} />
+                            <Route path="open-api-keys" element={<OpenApiKeys />} />
                         </Route>
                     </Routes>
                 </BrowserRouter>

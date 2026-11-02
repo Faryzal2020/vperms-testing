@@ -822,3 +822,36 @@ input[type="checkbox"] {
 .table tr.row-selected td {
     background: rgba(99, 102, 241, 0.12);
 }
+
+/* ============================================
+ * Open API Keys & Rule Viewer Enhancements
+ * ============================================ */
+.open-api-keys-page .data-table tr:hover td {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.open-api-keys-page .code-mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.open-api-keys-page .pill-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+.open-api-keys-page .pill-tag-danger {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.open-api-keys-page .pill-tag-info {
+    background: rgba(59, 130, 246, 0.15);
+    color: #93c5fd;
+    border: 1px solid rgba(59, 130, 246, 0.25);
+}

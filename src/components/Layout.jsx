@@ -86,6 +86,12 @@ export default function Layout() {
                         </NavLink>
                     )}
 
+                    {(hasPermission('admin:read') || hasPermission('api_keys:manage') || user?.isDevSuperadmin) && (
+                        <NavLink to="/open-api-keys" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} title="GET /api/v1/admin/keys">
+                            🔑 Open API Keys
+                        </NavLink>
+                    )}
+
                     {hasPermission('devices:write') && (
                         <NavLink to="/can-configs" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} title="GET /api/v1/can-configs">
                             🔧 CAN Configs
