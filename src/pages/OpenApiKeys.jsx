@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useApi } from '../hooks/useApi';
+import RuleEditorModal from '../components/RuleEditorModal';
 
 export default function OpenApiKeys() {
     const api = useApi();
@@ -19,7 +20,8 @@ export default function OpenApiKeys() {
     const [createdSecretData, setCreatedSecretData] = useState(null);
     const [copied, setCopied] = useState(false);
 
-    // Rule Viewer State
+    // Dedicated Rule Editor & Rule Viewer States
+    const [selectedKeyForEditor, setSelectedKeyForEditor] = useState(null);
     const [selectedKeyForRules, setSelectedKeyForRules] = useState(null);
     const [rulesData, setRulesData] = useState(null);
     const [loadingRules, setLoadingRules] = useState(false);
@@ -306,7 +308,8 @@ export default function OpenApiKeys() {
                                                 </td>
                                                 <td style={{ padding: '0.85rem 1rem' }}>
                                                     {isZeroTrust ? (
-                                                        <span
+                                                        <button
+                                                            onClick={() => setSelectedKeyForEditor(key)}
                                                             style={{
                                                                 fontSize: '0.75rem',
                                                                 padding: '0.2rem 0.5rem',
@@ -315,13 +318,18 @@ export default function OpenApiKeys() {
                                                                 background: 'rgba(239, 68, 68, 0.15)',
                                                                 color: '#f87171',
                                                                 border: '1px dashed #ef4444',
+                                                                cursor: 'pointer',
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '0.25rem',
                                                             }}
-                                                            title="Zero-Trust Baseline: Key cannot call any endpoints until a rule is assigned."
+                                                            title="Zero-Trust Baseline: Click to assign endpoint rules in the dedicated editor"
                                                         >
-                                                            0 (Default Deny)
-                                                        </span>
+                                                            🛡️ 0 (Default Deny — Edit)
+                                                        </button>
                                                     ) : (
-                                                        <span
+                                                        <button
+                                                            onClick={() => setSelectedKeyForEditor(key)}
                                                             style={{
                                                                 fontSize: '0.75rem',
                                                                 padding: '0.2rem 0.5rem',
@@ -329,10 +337,13 @@ export default function OpenApiKeys() {
                                                                 fontWeight: 600,
                                                                 background: 'rgba(34, 197, 94, 0.2)',
                                                                 color: '#86efac',
+                                                                border: '1px solid rgba(34, 197, 94, 0.3)',
+                                                                cursor: 'pointer',
                                                             }}
+                                                            title="Click to manage endpoint rules"
                                                         >
-                                                            {key.rulesCount} endpoint{key.rulesCount > 1 ? 's' : ''}
-                                                        </span>
+                                                            ✓ {key.rulesCount} endpoint{key.rulesCount > 1 ? 's' : ''} (Edit)
+                                                        </button>
                                                     )}
                                                 </td>
                                                 <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
@@ -344,12 +355,20 @@ export default function OpenApiKeys() {
                                                 <td style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>
                                                     <div style={{ display: 'inline-flex', gap: '0.5rem' }}>
                                                         <button
+                                                            className="btn btn-sm btn-primary"
+                                                            onClick={() => setSelectedKeyForEditor(key)}
+                                                            title="Dedicated Rule & Scope Editor: Configure endpoints, tenancy, rate limits, and field redactions"
+                                                            style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                                                        >
+                                                            ⚙️ Edit Rules
+                                                        </button>
+                                                        <button
                                                             className="btn btn-sm btn-secondary"
                                                             onClick={() => handleOpenRuleViewer(key)}
                                                             title="Inspect Effective Rules & Data Scope"
                                                             style={{ borderColor: 'var(--accent)', color: 'var(--accent-hover)' }}
                                                         >
-                                                            🔍 View Rules
+                                                            🔍 Preview
                                                         </button>
                                                         <button
                                                             className="btn btn-sm btn-secondary"
@@ -686,13 +705,33 @@ export default function OpenApiKeys() {
                             )}
                         </div>
 
-                        <div className="card-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
+                        <div className="card-footer" style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <button
+                                className="btn btn-primary"
+                                onClick={() => {
+                                    const target = selectedKeyForRules;
+                                    setSelectedKeyForRules(null);
+                                    setSelectedKeyForEditor(target);
+                                }}
+                            >
+                                ⚙️ Open Dedicated Rule Editor
+                            </button>
                             <button className="btn btn-secondary" onClick={() => setSelectedKeyForRules(null)}>
                                 Close Viewer
                             </button>
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* DEDICATED RULE & SCOPE EDITOR MODAL */}
+            {selectedKeyForEditor && (
+                <RuleEditorModal
+                    apiKey={selectedKeyForEditor}
+                    onClose={() => setSelectedKeyForEditor(null)}
+                    onRuleUpdated={loadKeys}
+                    api={api}
+                />
             )}
         </div>
     );
